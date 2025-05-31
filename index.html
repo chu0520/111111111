@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>Handpose 手勢辨識</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/addons/p5.dom.min.js"></script>
+  <script src="https://unpkg.com/ml5@latest/dist/ml5.min.js"></script>
+</head>
+<body>
+  <script>
+    let video;
+    let handpose;
+    let predictions = [];
+
+    function setup() {
+      createCanvas(640, 480);
+      video = createCapture(VIDEO);
+      video.size(width, height);
+      video.hide();
+
+      handpose = ml5.handpose(video, modelReady);
+      handpose.on("predict", results => {
+        predictions = results;
+      });
+    }
+
+    function modelReady() {
+      console.log("Handpose model loaded!");
+    }
+
+    function draw() {
+      image(video, 0, 0, width, height);
+
+      if (predictions.length > 0) {
+        let gesture = getGesture(predictions[0]);
+        if (gesture === "scissors") {
+          fill(0, 255, 0, 150);
+          ellipse(width / 2, height / 2, 150, 150); // 畫圓圈
+        } else if (gesture === "rock") {
+          fill(255, 0, 0, 150);
+          triangle(width / 2, height / 2 - 80, width / 2 - 70, height / 2 + 60, width / 2 + 70, height / 2 + 60); // 畫三角形
+        }
+      }
+    }
+
+    // 根據手指伸展狀態判斷手勢
+    function getGesture(prediction) {
+      // 取得每根手指的關鍵點
+      const annotations = prediction.annotations;
+      // 判斷每根手指是否伸直
+      // 剪刀：只有食指和中指伸直
+      // 石頭：五指都彎曲
+      let fingers = [
+        isFingerExtended(annotations.thumb),
+        isFingerExtended(annotations.indexFinger),
+        isFingerExtended(annotations.middleFinger),
+        isFingerExtended(annotations.ringFinger),
+        isFingerExtended(annotations.pinky)
+      ];
+      if (!fingers[0] && fingers[1] && fingers[2] && !fingers[3] && !fingers[4]) {
+        return "scissors";
+      }
+      if (fingers.every(f => !f)) {
+        return "rock";
+      }
+      return "";
+    }
+
+    // 判斷單根手指是否伸直
+    function isFingerExtended(finger) {
+      // finger 是一組關鍵點陣列，取指尖與根部的 y 座標差
+      // 若指尖比根部高（y 值較小），則視為伸直
+      return finger[3][1] < finger[0][1] - 10;
+    }
+  </script>
+</body>
+</html>
+</html>
